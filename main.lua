@@ -561,11 +561,16 @@ function GuiLib:CreateWindow(Args)
 	end))
 
 	local ClosedIconSettings = type(Args.ClosedIcon) == "table" and Args.ClosedIcon or {}
-	local ClosedIconEnabled = Args.ClosedIcon ~= false and ClosedIconSettings.Enabled ~= false
-	local ClosedIconMobileOnly = ClosedIconSettings.MobileOnly == true
-	local function CanShowClosedIcon()
-		return ClosedIconEnabled and (not ClosedIconMobileOnly or UIS.TouchEnabled)
-	end
+local ClosedIconEnabled = Args.ClosedIcon ~= false and ClosedIconSettings.Enabled ~= false
+local ClosedIconMobileOnly = ClosedIconSettings.MobileOnly == true
+
+local function IsMobile()
+    return UIS.TouchEnabled and not UIS.KeyboardEnabled and not UIS.MouseEnabled
+end
+
+local function CanShowClosedIcon()
+    return ClosedIconEnabled and (not ClosedIconMobileOnly or IsMobile())
+end
 
 	local ReopenButton = Create("ImageButton", {
 		Name = "NovexReopen",
