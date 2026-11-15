@@ -297,7 +297,7 @@ function GuiLib:SetTheme(theme)
 		and self.Themes[theme]
 		or theme
 
-	assert(type(newTheme) == "table", "Invalid Novex theme")
+	assert(type(newTheme) == "table", "Invalid Kyn theme")
 
 	Theme = newTheme
 
@@ -333,7 +333,7 @@ function GuiLib:Notify(title, message, duration)
 end
 
 local MainGui = Create("ScreenGui", {
-	Name = "Novex",
+	Name = "Kyn",
 	ResetOnSpawn = false,
 	DisplayOrder = 1000,
 	ZIndexBehavior = Enum.ZIndexBehavior.Sibling
@@ -357,8 +357,8 @@ function GuiLib:CreateWindow(Args)
 	end
 
 	local function AnimateButton(button)
-		if not button or button:FindFirstChild("NovexPressScale") then return end
-		local pressScale = Create("UIScale", {Name = "NovexPressScale", Scale = 1}, button)
+		if not button or button:FindFirstChild("KynPressScale") then return end
+		local pressScale = Create("UIScale", {Name = "KynPressScale", Scale = 1}, button)
 		Track(button.MouseButton1Down:Connect(function()
 			Tween(pressScale, {Scale = 0.94}, 0.14)
 		end))
@@ -409,7 +409,7 @@ function GuiLib:CreateWindow(Args)
 	}, Window)
 
 	local OuterBorder = Create("Frame", {
-		Name = "NovexOuterBorder", Size = UDim2.fromScale(1, 1),
+		Name = "KynOuterBorder", Size = UDim2.fromScale(1, 1),
 		BackgroundTransparency = 1, BorderSizePixel = 0,
 		ZIndex = 80, Active = false
 	}, Window)
@@ -433,7 +433,7 @@ function GuiLib:CreateWindow(Args)
 
 	local Title = Label(
 		Header,
-		Args.Title or "Novex",
+		Args.Title or "Kyn",
 		UDim2.new(1, -150, 0, 23),
 		UDim2.fromOffset(0, 4),
 		15
@@ -589,11 +589,11 @@ local function CanShowClosedIcon()
 end
 
 	local ReopenButton = Create("ImageButton", {
-		Name = "NovexReopen",
+		Name = "KynReopen",
 		Size = UDim2.fromOffset(48, 48),
 		Position = UDim2.new(1, -58, 0.5, -24),
 		BackgroundColor3 = Theme.Accent,
-		Image = "rbxassetid://80530766105475",
+		Image = "rbxassetid://72927002403352",
 		ImageColor3 = Color3.fromRGB(255, 255, 255),
 		ScaleType = Enum.ScaleType.Fit,
 		BorderSizePixel = 0,
@@ -650,7 +650,7 @@ end
 	local function EnsureTooltip()
 		if TooltipFrame then return TooltipFrame end
 		TooltipFrame = Create("Frame", {
-			Name = "NovexTooltip", AutomaticSize = Enum.AutomaticSize.Y,
+			Name = "KynTooltip", AutomaticSize = Enum.AutomaticSize.Y,
 			Size = UDim2.fromOffset(240, 0), BackgroundColor3 = Theme.Section,
 			BorderSizePixel = 0, Visible = false, ZIndex = 250
 		}, MainGui)
@@ -714,7 +714,7 @@ end
 		options = options or {}
 		if WatermarkObject then WatermarkObject:Destroy() end
 		local root = Create("Frame", {
-			Name = "NovexWatermark",
+			Name = "KynWatermark",
 			AutomaticSize = Enum.AutomaticSize.XY,
 			Size = UDim2.fromOffset(0, 27),
 			Position = options.Position or UDim2.fromOffset(12, 12),
@@ -743,7 +743,7 @@ end
 			Size = UDim2.fromOffset(0, 27),
 			Position = UDim2.fromOffset(10, 0),
 			BackgroundTransparency = 1,
-			Text = tostring(options.Text or "Novex | {fps} fps | {ping} ms"),
+			Text = tostring(options.Text or "Kyn | {fps} fps | {ping} ms"),
 			TextColor3 = Theme.Text,
 			TextSize = options.TextSize or 11,
 			Font = Enum.Font.GothamSemibold,
@@ -767,7 +767,7 @@ end
 				local value = item:GetValueString():match("[%d%.]+")
 				if value then ping = tostring(math.floor(tonumber(value) + 0.5)) end
 			end)
-			label.Text = tostring(options.Text or "Novex | {fps} fps | {ping} ms")
+			label.Text = tostring(options.Text or "Kyn | {fps} fps | {ping} ms")
 				:gsub("{fps}", tostring(fps)):gsub("{ping}", ping)
 		end)
 		local watermarkDragging, dragInput, dragStart, startPos = false, nil, nil, nil
@@ -1848,7 +1848,7 @@ end
 
 	local ConfigPanel
 	local SearchInput = Create("TextBox", {
-		Name = "NovexSearchInput", Size = UDim2.new(1, -315, 0, 27),
+		Name = "KynSearchInput", Size = UDim2.new(1, -315, 0, 27),
 		Position = UDim2.fromOffset(150, 12), BackgroundColor3 = Theme.Element,
 		BackgroundTransparency = 0.15, BorderSizePixel = 0, Text = "",
 		PlaceholderText = "Search features...", PlaceholderColor3 = Theme.SubText,
@@ -1859,7 +1859,7 @@ end
 	RegisterTheme(SearchInput, {BackgroundColor3 = "Element", TextColor3 = "Text", PlaceholderColor3 = "SubText"})
 
 	local SearchPanel = Create("Frame", {
-		Name = "NovexSearchResults", Size = UDim2.new(1, -315, 0, 220),
+		Name = "KynSearchResults", Size = UDim2.new(1, -315, 0, 220),
 		Position = UDim2.fromOffset(150, 43), BackgroundColor3 = Theme.Section,
 		BorderSizePixel = 0, Visible = false, ZIndex = 90
 	}, Window)
@@ -1926,7 +1926,7 @@ end
 	end))
 
 	ConfigPanel = Create("Frame", {
-		Name = "NovexConfigPanel", Size = UDim2.fromOffset(238, 226),
+		Name = "KynConfigPanel", Size = UDim2.fromOffset(238, 226),
 		Position = UDim2.new(1, -250, 0, 44), BackgroundColor3 = Theme.Section,
 		BorderSizePixel = 0, Visible = false, ZIndex = 90
 	}, Window)
@@ -2005,7 +2005,7 @@ end
 
 	local ConfirmTitle = Label(
 		ConfirmBox,
-		"Close Novex?",
+		"Close Kyn?",
 		UDim2.new(1, -20, 0, 22),
 		UDim2.fromOffset(11, 9),
 		13
@@ -2213,11 +2213,10 @@ end
 		end
 	end))
 
-	-- Active toggles are shown in the top-right, opposite the default top-left watermark.
 	local ActiveFeatureRows = {}
 	local activeFeatureOrder = 0
 	local ActiveFeaturesHolder = Create("Frame", {
-		Name = "NovexActiveFeatures",
+		Name = "KynActiveFeatures",
 		Size = UDim2.fromOffset(220, 0),
 		AutomaticSize = Enum.AutomaticSize.Y,
 		Position = UDim2.new(1, -12, 0, 12),
@@ -2295,7 +2294,7 @@ end
 	end
 
 	local NotificationHolder = Create("Frame", {
-		Name = "NovexNotifications", Size = UDim2.fromOffset(320, 0),
+		Name = "KynNotifications", Size = UDim2.fromOffset(320, 0),
 		AutomaticSize = Enum.AutomaticSize.Y, Position = UDim2.new(1, -12, 1, -12),
 		AnchorPoint = Vector2.new(1, 1), BackgroundTransparency = 1,
 		BorderSizePixel = 0, ZIndex = 300, Active = true
@@ -2322,7 +2321,7 @@ end
 		title, message, duration = tostring(title or "Notification"), tostring(message or ""), tonumber(duration) or 4
 		notificationCount += 1
 		local toast = Create("Frame", {
-			Name = "NovexNotification", Size = UDim2.new(1, 0, 0, message ~= "" and 66 or 40),
+			Name = "KynNotification", Size = UDim2.new(1, 0, 0, message ~= "" and 66 or 40),
 			BackgroundColor3 = Theme.Section, BackgroundTransparency = 0.03,
 			BorderSizePixel = 0, ZIndex = 301, LayoutOrder = notificationCount, Active = true
 		}, NotificationHolder)
