@@ -153,6 +153,8 @@ local THEME_KEYS = {
 	"Hover", "Accent", "Text", "SubText", "Border"
 }
 
+GuiLib.CustomThemes = GuiLib.CustomThemes or {}
+
 function GuiLib:RegisterTheme(name, palette)
 	assert(type(name) == "string" and name ~= "", "Theme name must be a non-empty string")
 	assert(type(palette) == "table", "Theme palette must be a table")
@@ -163,10 +165,27 @@ function GuiLib:RegisterTheme(name, palette)
 			"Theme '%s' is missing Color3 field '%s'", name, key))
 		resolved[key] = value
 	end
-	resolved.Shadow = palette.Shadow
-	resolved.RoundedRadius = palette.RoundedRadius
 	GuiLib.Themes[name] = resolved
+	GuiLib.CustomThemes[name] = resolved
 	return resolved
+end
+
+function GuiLib:RemoveTheme(name)
+	if GuiLib.CustomThemes[name] then
+		GuiLib.CustomThemes[name] = nil
+		GuiLib.Themes[name] = nil
+		return true
+	end
+	return false
+end
+
+function GuiLib:ListCustomThemes()
+	local names = {}
+	for name in pairs(GuiLib.CustomThemes) do
+		table.insert(names, name)
+	end
+	table.sort(names)
+	return names
 end
 
 function GuiLib:PatchTheme(overrides)
@@ -177,6 +196,24 @@ function GuiLib:PatchTheme(overrides)
 		end
 	end
 	GuiLib:SetTheme(Theme)
+end
+
+function GuiLib:ExportTheme(name)
+	local palette = GuiLib.Themes[name or self:GetThemeName()]
+	if not palette then return nil end
+	local out = {}
+	for _, key in ipairs(THEME_KEYS) do
+		local c = palette[key]
+		out[key] = { math.floor(c.R * 255 + 0.5), math.floor(c.G * 255 + 0.5), math.floor(c.B * 255 + 0.5) }
+	end
+	return out
+end
+
+function GuiLib:GetThemeName()
+	for name, palette in pairs(GuiLib.Themes) do
+		if palette == Theme then return name end
+	end
+	return nil
 end
 
 local Theme = GuiLib.Themes.Dark
