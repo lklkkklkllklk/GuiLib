@@ -150,6 +150,7 @@ GuiLib.Themes = {
 
 local Theme = GuiLib.Themes.Dark
 local ThemeObjects = {}
+local ThemeObjectMap = {}
 
 local function Create(class, properties, parent)
 	local object = Instance.new(class)
@@ -181,19 +182,37 @@ local function Stroke(object, transparency, borderPosition)
 end
 
 RegisterTheme = function(object, properties, callback)
-	table.insert(ThemeObjects, {
+	local entry = {
 		Object = object,
 		Properties = properties or {},
 		Callback = callback
-	})
+	}
+	table.insert(ThemeObjects, entry)
+	ThemeObjectMap[object] = entry
 end
 
 local function UnregisterThemeTree(root)
 	if not root then return end
-	for index = #ThemeObjects, 1, -1 do
-		local object = ThemeObjects[index].Object
-		if not object or object == root or object:IsDescendantOf(root) then
-			table.remove(ThemeObjects, index)
+	local entry = ThemeObjectMap[root]
+	if entry then
+		ThemeObjectMap[root] = nil
+		for index = #ThemeObjects, 1, -1 do
+			if ThemeObjects[index] == entry then
+				table.remove(ThemeObjects, index)
+				break
+			end
+		end
+	end
+	for _, descendant in ipairs(root:GetDescendants()) do
+		local dEntry = ThemeObjectMap[descendant]
+		if dEntry then
+			ThemeObjectMap[descendant] = nil
+			for index = #ThemeObjects, 1, -1 do
+				if ThemeObjects[index] == dEntry then
+					table.remove(ThemeObjects, index)
+					break
+				end
+			end
 		end
 	end
 end
@@ -203,7 +222,7 @@ local AnimationSettings = {
 	Speed = 1
 }
 
-local function Tween(object, properties, duration)
+local function Tween(object, properties, duration, style, direction)
 	if not object or not object.Parent then return end
 	if not AnimationSettings.Enabled then
 		for property, value in pairs(properties) do
@@ -215,8 +234,8 @@ local function Tween(object, properties, duration)
 		object,
 		TweenInfo.new(
 			math.max(0.03, (duration or 0.16) * AnimationSettings.Speed),
-			Enum.EasingStyle.Quart,
-			Enum.EasingDirection.Out
+			style or Enum.EasingStyle.Quart,
+			direction or Enum.EasingDirection.Out
 		),
 		properties
 	)
@@ -275,6 +294,55 @@ local function AddPadding(object, left, right, top, bottom)
 	}, object)
 end
 
+local function AddRipple(button, color)
+	button.ClipsDescendants = true
+	local rippleHolder = Create("Frame", {
+		Name = "KynRippleHolder",
+		Size = UDim2.fromScale(1, 1),
+		BackgroundTransparency = 1,
+		ClipsDescendants = true,
+		ZIndex = button.ZIndex + 1
+	}, button)
+	Corner(rippleHolder, 7)
+
+	button.MouseButton1Down:Connect(function()
+		local mouse = UIS:GetMouseLocation()
+		local relX = mouse.X - button.AbsolutePosition.X
+		local relY = mouse.Y - button.AbsolutePosition.Y
+		local ripple = Create("Frame", {
+			Size = UDim2.fromOffset(10, 10),
+			Position = UDim2.fromOffset(relX - 5, relY - 5),
+			BackgroundColor3 = color or Color3.new(1, 1, 1),
+			BackgroundTransparency = 0.55,
+			BorderSizePixel = 0,
+			ZIndex = button.ZIndex + 2
+		}, rippleHolder)
+		Corner(ripple, 100)
+		local size = math.max(button.AbsoluteSize.X, button.AbsoluteSize.Y) * 2.5
+		TS:Create(ripple, TweenInfo.new(0.55, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+			Size = UDim2.fromOffset(size, size),
+			Position = UDim2.fromOffset(relX - size / 2, relY - size / 2),
+			BackgroundTransparency = 1
+		}):Play()
+		task.delay(0.6, function()
+			if ripple and ripple.Parent then
+				ripple:Destroy()
+			end
+		end)
+	end)
+end
+
+local function AddGlowHover(button, stroke)
+	if not stroke then return end
+	local baseThickness = stroke.Thickness
+	button.MouseEnter:Connect(function()
+		Tween(stroke, {Thickness = baseThickness + 0.5, Transparency = 0}, 0.12)
+	end)
+	button.MouseLeave:Connect(function()
+		Tween(stroke, {Thickness = baseThickness, Transparency = 0.18}, 0.14)
+	end)
+end
+
 function GuiLib:SetTheme(theme)
 	local newTheme = type(theme) == "string"
 		and self.Themes[theme]
@@ -285,6 +353,7 @@ function GuiLib:SetTheme(theme)
 		local entry = ThemeObjects[index]
 		local object = entry.Object
 		if not object or not object.Parent then
+			ThemeObjectMap[object] = nil
 			table.remove(ThemeObjects, index)
 		else
 			for property, themeKey in pairs(entry.Properties) do
@@ -333,18 +402,21 @@ function GuiLib:CreateWindow(Args)
 		return connection
 	end
 
-	local function AnimateButton(button)
+	local function AnimateButton(button, enableRipple, rippleColor)
 		if not button or button:FindFirstChild("KynPressScale") then return end
 		local pressScale = Create("UIScale", {Name = "KynPressScale", Scale = 1}, button)
 		Track(button.MouseButton1Down:Connect(function()
-			Tween(pressScale, {Scale = 0.94}, 0.14)
+			TS:Create(pressScale, TweenInfo.new(0.12, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Scale = 0.93}):Play()
 		end))
 		Track(button.MouseButton1Up:Connect(function()
-			Tween(pressScale, {Scale = 1}, 0.18)
+			TS:Create(pressScale, TweenInfo.new(0.35, Enum.EasingStyle.Elastic, Enum.EasingDirection.Out), {Scale = 1}):Play()
 		end))
 		Track(button.MouseLeave:Connect(function()
-			Tween(pressScale, {Scale = 1}, 0.18)
+			TS:Create(pressScale, TweenInfo.new(0.22, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Scale = 1}):Play()
 		end))
+		if enableRipple ~= false then
+			AddRipple(button, rippleColor)
+		end
 	end
 
 	local function AddGradient(object, firstKey, secondKey, rotation)
@@ -505,6 +577,29 @@ function GuiLib:CreateWindow(Args)
 	local SearchItems = {}
 	local AnimationConnection
 	local AnimationId = 0
+
+	local InputHandlers = { Changed = {}, Ended = {}, Began = {} }
+	local function AddInputHandler(kind, callback)
+		table.insert(InputHandlers[kind], callback)
+		return callback
+	end
+	local function RemoveInputHandler(kind, callback)
+		local list = InputHandlers[kind]
+		for i = #list, 1, -1 do
+			if list[i] == callback then
+				table.remove(list, i)
+			end
+		end
+	end
+	Track(UIS.InputChanged:Connect(function(input)
+		for _, cb in ipairs(InputHandlers.Changed) do cb(input) end
+	end))
+	Track(UIS.InputEnded:Connect(function(input)
+		for _, cb in ipairs(InputHandlers.Ended) do cb(input) end
+	end))
+	Track(UIS.InputBegan:Connect(function(input, processed)
+		for _, cb in ipairs(InputHandlers.Began) do cb(input, processed) end
+	end))
 
 	local function Lerp(a, b, t)
 		return a + (b - a) * t
@@ -712,14 +807,23 @@ function GuiLib:CreateWindow(Args)
 		}, root)
 		AddPadding(root, 10, 12, 0, 0)
 		RegisterTheme(label, {TextColor3 = "Text"})
-		local alive, elapsed, frames, fps = true, 0, 0, 0
-		local connection = RunService.RenderStepped:Connect(function(dt)
+
+		local alive = true
+		local lastUpdate = 0
+		local fpsCounter = { frames = 0, since = os.clock(), last = 60 }
+		local connection = RunService.Heartbeat:Connect(function()
 			if not alive then return end
-			frames += 1
-			elapsed += dt
-			if elapsed < 0.5 then return end
-			fps = math.floor(frames / elapsed + 0.5)
-			frames, elapsed = 0, 0
+			local now = os.clock()
+			fpsCounter.frames += 1
+			if now - lastUpdate < 0.5 then
+				return
+			end
+			lastUpdate = now
+			if now - fpsCounter.since >= 0.5 then
+				fpsCounter.last = math.floor(fpsCounter.frames / (now - fpsCounter.since) + 0.5)
+				fpsCounter.frames = 0
+				fpsCounter.since = now
+			end
 			local ping = "?"
 			pcall(function()
 				local item = Stats.Network.ServerStatsItem["Data Ping"]
@@ -727,40 +831,48 @@ function GuiLib:CreateWindow(Args)
 				if value then ping = tostring(math.floor(tonumber(value) + 0.5)) end
 			end)
 			label.Text = tostring(options.Text or "Kyn | {fps} fps | {ping} ms")
-				:gsub("{fps}", tostring(fps)):gsub("{ping}", ping)
+				:gsub("{fps}", tostring(fpsCounter.last)):gsub("{ping}", ping)
 		end)
-		local watermarkDragging, dragInput, dragStart, startPos = false, nil, nil, nil
-		local dragConnections = {}
-		local function addDragConnection(conn) table.insert(dragConnections, conn) end
+
+		local watermarkDragging, dragStart, startPos = false, nil, nil
 		local function beginWatermarkDrag(input)
 			if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
 				watermarkDragging = true
 				dragStart = input.Position
 				startPos = root.Position
-				if input.UserInputType == Enum.UserInputType.Touch then dragInput = input end
 			end
 		end
-		addDragConnection(root.InputBegan:Connect(beginWatermarkDrag))
-		addDragConnection(label.InputBegan:Connect(beginWatermarkDrag))
-		addDragConnection(root.InputChanged:Connect(function(input)
-			if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then dragInput = input end
-		end))
-		addDragConnection(UIS.InputChanged:Connect(function(input)
-			if watermarkDragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input == dragInput) then
+		local connBegan1 = root.InputBegan:Connect(beginWatermarkDrag)
+		local connBegan2 = label.InputBegan:Connect(beginWatermarkDrag)
+
+		local onChanged = function(input)
+			if watermarkDragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
 				local delta = input.Position - dragStart
 				root.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
 			end
-		end))
-		addDragConnection(UIS.InputEnded:Connect(function(input)
-			if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then watermarkDragging = false end
-		end))
+		end
+		local onEnded = function(input)
+			if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+				watermarkDragging = false
+			end
+		end
+		AddInputHandler("Changed", onChanged)
+		AddInputHandler("Ended", onEnded)
+
+		local function cleanupInput()
+			connBegan1:Disconnect()
+			connBegan2:Disconnect()
+			RemoveInputHandler("Changed", onChanged)
+			RemoveInputHandler("Ended", onEnded)
+		end
+
 		WatermarkObject = {Root = root, Label = label, Connection = connection, Outline = outline}
 		function WatermarkObject:SetVisible(state) root.Visible = not not state end
 		function WatermarkObject:SetText(value) options.Text = tostring(value); label.Text = options.Text end
 		function WatermarkObject:Destroy()
 			alive = false
 			connection:Disconnect()
-			for _, dragConnection in ipairs(dragConnections) do dragConnection:Disconnect() end
+			cleanupInput()
 			UnregisterThemeTree(root)
 			root:Destroy()
 		end
@@ -834,11 +946,16 @@ function GuiLib:CreateWindow(Args)
 			SelectedTab = {
 				Page = Page,
 				Button = TabButton,
-				Indicator = TabIndicator,
-				Stroke = tabStroke
+				Indicator = TabIndicator
 			}
 			Page.Visible = true
 			Page.CanvasPosition = Vector2.zero
+			if AnimationSettings.Enabled then
+				Page.Position = UDim2.fromOffset(14, 0)
+				TS:Create(Page, TweenInfo.new(0.28 * AnimationSettings.Speed, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+					Position = UDim2.fromOffset(0, 0)
+				}):Play()
+			end
 			if SelectedSubTab then
 				for _, sub in ipairs(SubTabs) do sub.Page.Visible = false end
 				SelectedSubTab.Page.Visible = true
@@ -869,7 +986,6 @@ function GuiLib:CreateWindow(Args)
 			local sub = {}
 			local button = Create("TextButton", {Size = UDim2.new(0, 88, 1, 0), BackgroundColor3 = Theme.Element, BackgroundTransparency = 1, Text = Name or "Subtab", TextColor3 = Theme.SubText, TextSize = 9, Font = Enum.Font.GothamSemibold, BorderSizePixel = 0, AutoButtonColor = false}, SubTabBar)
 			AnimateButton(button)
-			local subIndicator = nil
 			RegisterTheme(button, {BackgroundColor3 = "Element", TextColor3 = "SubText"}, function()
 				local active = SelectedSubTab and SelectedSubTab.Button == button
 				button.BackgroundTransparency = 1
@@ -877,7 +993,7 @@ function GuiLib:CreateWindow(Args)
 			end)
 			local subPage = Create("ScrollingFrame", {Name = tostring(Name or "Subtab"), Size = UDim2.new(1, 0, 1, -36), Position = UDim2.fromOffset(0, 36), BackgroundTransparency = 1, BorderSizePixel = 0, ScrollBarThickness = 3, ScrollBarImageColor3 = Theme.Accent, CanvasSize = UDim2.new(), AutomaticCanvasSize = Enum.AutomaticSize.Y, Visible = false}, Page)
 			Create("UIListLayout", {Padding = UDim.new(0, 7), SortOrder = Enum.SortOrder.LayoutOrder}, subPage); AddPadding(subPage, 8, 8, 8, 8)
-			sub.Page = subPage; sub.Button = button; sub.Indicator = subIndicator
+			sub.Page = subPage; sub.Button = button
 			local function selectSub()
 				if SelectedSubTab then
 					SelectedSubTab.Page.Visible = false
@@ -1298,13 +1414,13 @@ function GuiLib:CreateWindow(Args)
 						Holder.Size = UDim2.new(1, 0, 0, holderHeight)
 						Animation, HolderAnimation = nil, nil
 					else
-						local info = TweenInfo.new(0.2 * AnimationSettings.Speed, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
+						local info = TweenInfo.new(0.26 * AnimationSettings.Speed, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
 						Animation = TS:Create(Options, info, {Size = UDim2.new(1, 0, 0, optionsHeight)})
 						HolderAnimation = TS:Create(Holder, info, {Size = UDim2.new(1, 0, 0, holderHeight)})
 						Animation:Play()
 						HolderAnimation:Play()
 					end
-					Tween(Arrow, {Rotation = state and 180 or 0}, 0.18)
+					TS:Create(Arrow, TweenInfo.new(0.28, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Rotation = state and 180 or 0}):Play()
 				end
 
 				local function Choose(value)
@@ -1601,7 +1717,7 @@ function GuiLib:CreateWindow(Args)
 
 	Track(SearchInput:GetPropertyChangedSignal("Text"):Connect(RefreshSearch))
 	Track(SearchInput.Focused:Connect(function() if SearchInput.Text ~= "" then RefreshSearch() end end))
-	Track(UIS.InputBegan:Connect(function(input)
+	AddInputHandler("Began", function(input)
 		if input.UserInputType == Enum.UserInputType.MouseButton1 and SearchPanel.Visible then
 			local p, z = input.Position, SearchPanel.AbsolutePosition
 			local size = SearchPanel.AbsoluteSize
@@ -1609,7 +1725,7 @@ function GuiLib:CreateWindow(Args)
 				if not SearchInput:IsFocused() then SearchPanel.Visible = false end
 			end
 		end
-	end))
+	end)
 
 	ConfigPanel = Create("Frame", {
 		Name = "KynConfigPanel", Size = UDim2.fromOffset(238, 226),
@@ -1652,9 +1768,22 @@ function GuiLib:CreateWindow(Args)
 	end
 
 	local draggingSpeed = false
-	Track(SpeedHitbox.InputBegan:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then draggingSpeed = true; SetAnimationSpeed(input.Position.X) end end))
-	Track(UIS.InputChanged:Connect(function(input) if draggingSpeed and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then SetAnimationSpeed(input.Position.X) end end))
-	Track(UIS.InputEnded:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then draggingSpeed = false end end))
+	Track(SpeedHitbox.InputBegan:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+			draggingSpeed = true
+			SetAnimationSpeed(input.Position.X)
+		end
+	end))
+	AddInputHandler("Changed", function(input)
+		if draggingSpeed and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+			SetAnimationSpeed(input.Position.X)
+		end
+	end)
+	AddInputHandler("Ended", function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+			draggingSpeed = false
+		end
+	end)
 
 	local KeyButton = MakeConfigButton("Toggle key: " .. ToggleKey.Name, 112)
 	Track(KeyButton.MouseButton1Click:Connect(function() ListeningForToggleKey = true; KeyButton.Text = "Press a key..." end))
@@ -1768,7 +1897,7 @@ function GuiLib:CreateWindow(Args)
 		return false
 	end
 
-	Track(UIS.InputBegan:Connect(function(input)
+	AddInputHandler("Began", function(input)
 		if not IsOpen or ConfirmOpen or Destroyed then return end
 		if input.UserInputType ~= Enum.UserInputType.MouseButton1
 			and input.UserInputType ~= Enum.UserInputType.Touch then
@@ -1786,9 +1915,9 @@ function GuiLib:CreateWindow(Args)
 		Dragging = true
 		DragStart = input.Position
 		StartPosition = Window.Position
-	end))
+	end)
 
-	Track(UIS.InputChanged:Connect(function(input)
+	AddInputHandler("Changed", function(input)
 		if not IsOpen then return end
 		if input.UserInputType == Enum.UserInputType.MouseMovement
 			or input.UserInputType == Enum.UserInputType.Touch then
@@ -1806,17 +1935,17 @@ function GuiLib:CreateWindow(Args)
 				Window.Position = target
 			end
 		end
-	end))
+	end)
 
-	Track(UIS.InputEnded:Connect(function(input)
+	AddInputHandler("Ended", function(input)
 		if input.UserInputType == Enum.UserInputType.MouseButton1
 			or input.UserInputType == Enum.UserInputType.Touch then
 			Dragging = false
 			WindowObject.ActiveSlider = nil
 		end
-	end))
+	end)
 
-	Track(UIS.InputBegan:Connect(function(input, processed)
+	AddInputHandler("Began", function(input, processed)
 		if ListeningForToggleKey and input.UserInputType == Enum.UserInputType.Keyboard then
 			ToggleKey = input.KeyCode
 			ListeningForToggleKey = false
@@ -1828,7 +1957,7 @@ function GuiLib:CreateWindow(Args)
 		if input.KeyCode == ToggleKey then
 			ToggleWindow()
 		end
-	end))
+	end)
 
 	local ActiveFeatureRows = {}
 	local activeFeatureOrder = 0
@@ -1864,30 +1993,25 @@ function GuiLib:CreateWindow(Args)
 	}, ActiveFeatureList)
 	AddPadding(ActiveFeaturesHolder, 0, 0, 0, 7)
 
-	local activeDragging, activeDragInput, activeDragStart, activeStartPos = false, nil, nil, nil
-	local activeDragConnections = {}
-	local function addActiveDragConnection(conn) table.insert(activeDragConnections, conn) end
-	local function beginActiveDrag(input)
+	local activeDragging, activeDragStart, activeStartPos = false, nil, nil
+	local beginActiveDragConn = ActiveFeaturesHolder.InputBegan:Connect(function(input)
 		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
 			activeDragging = true
 			activeDragStart = input.Position
 			activeStartPos = ActiveFeaturesHolder.Position
-			if input.UserInputType == Enum.UserInputType.Touch then activeDragInput = input end
 		end
-	end
-	addActiveDragConnection(ActiveFeaturesHolder.InputBegan:Connect(beginActiveDrag))
-	addActiveDragConnection(ActiveFeaturesHolder.InputChanged:Connect(function(input)
-		if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then activeDragInput = input end
-	end))
-	addActiveDragConnection(UIS.InputChanged:Connect(function(input)
-		if activeDragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input == activeDragInput) then
+	end)
+	AddInputHandler("Changed", function(input)
+		if activeDragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
 			local delta = input.Position - activeDragStart
 			ActiveFeaturesHolder.Position = UDim2.new(activeStartPos.X.Scale, activeStartPos.X.Offset + delta.X, activeStartPos.Y.Scale, activeStartPos.Y.Offset + delta.Y)
 		end
-	end))
-	addActiveDragConnection(UIS.InputEnded:Connect(function(input)
-		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then activeDragging = false end
-	end))
+	end)
+	AddInputHandler("Ended", function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+			activeDragging = false
+		end
+	end)
 
 	RefreshActiveFeatures = function(name, enabled)
 		if not name or tostring(name) == "" then return end
@@ -1917,6 +2041,10 @@ function GuiLib:CreateWindow(Args)
 			RegisterTheme(label, {TextColor3 = "Text"})
 			ActiveFeatureRows[name] = row
 			row.BackgroundTransparency = 1
+			if AnimationSettings.Enabled then
+				row.Position = UDim2.fromOffset(20, 0)
+				TS:Create(row, TweenInfo.new(0.24, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Position = UDim2.fromOffset(0, 0)}):Play()
+			end
 		elseif not enabled and row then
 			ActiveFeatureRows[name] = nil
 			UnregisterThemeTree(row)
@@ -1933,15 +2061,17 @@ function GuiLib:CreateWindow(Args)
 	}, MainGui)
 	Create("UIListLayout", {Padding = UDim.new(0, 7), SortOrder = Enum.SortOrder.LayoutOrder, VerticalAlignment = Enum.VerticalAlignment.Bottom, HorizontalAlignment = Enum.HorizontalAlignment.Center}, NotificationHolder)
 	local notificationCount, notificationDragging, notificationDragStart, notificationStartPosition = 0, false, nil, nil
-	Track(UIS.InputChanged:Connect(function(input)
+	AddInputHandler("Changed", function(input)
 		if notificationDragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
 			local delta = input.Position - notificationDragStart
 			NotificationHolder.Position = UDim2.new(notificationStartPosition.X.Scale, notificationStartPosition.X.Offset + delta.X, notificationStartPosition.Y.Scale, notificationStartPosition.Y.Offset + delta.Y)
 		end
-	end))
-	Track(UIS.InputEnded:Connect(function(input)
-		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then notificationDragging = false end
-	end))
+	end)
+	AddInputHandler("Ended", function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+			notificationDragging = false
+		end
+	end)
 
 	function WindowObject:Notify(title, message, duration)
 		if Destroyed then return nil end
@@ -1975,26 +2105,19 @@ function GuiLib:CreateWindow(Args)
 		}, toast)
 		RegisterTheme(close, {TextColor3 = "SubText"})
 		local dismissed = false
-		local fadeProperties = {}
-		local function captureFadeProperties(object)
-			if object:IsA("GuiObject") then table.insert(fadeProperties, {Object = object, Property = "BackgroundTransparency", Value = object.BackgroundTransparency}) end
-			if object:IsA("TextLabel") or object:IsA("TextButton") or object:IsA("TextBox") then table.insert(fadeProperties, {Object = object, Property = "TextTransparency", Value = object.TextTransparency}) end
-			if object:IsA("ImageLabel") or object:IsA("ImageButton") then table.insert(fadeProperties, {Object = object, Property = "ImageTransparency", Value = object.ImageTransparency}) end
-			if object:IsA("UIStroke") then table.insert(fadeProperties, {Object = object, Property = "Transparency", Value = object.Transparency}) end
-		end
-		captureFadeProperties(toast)
-		for _, child in ipairs(toast:GetDescendants()) do captureFadeProperties(child) end
-		local function fadeToast(fadeOut, duration)
-			for _, entry in ipairs(fadeProperties) do
-				if entry.Object and entry.Object.Parent then
-					Tween(entry.Object, {[entry.Property] = fadeOut and 1 or entry.Value}, duration)
-				end
-			end
-		end
+
+		toast.Position = UDim2.fromOffset(40, 0)
+		TS:Create(toast, TweenInfo.new(0.32, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Position = UDim2.fromOffset(0, 0)}):Play()
+		toast.BackgroundTransparency = 1
+		TS:Create(toast, TweenInfo.new(0.26, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {BackgroundTransparency = 0.03}):Play()
+
 		local function dismiss()
 			if dismissed or not toast.Parent then return end
 			dismissed = true
-			fadeToast(true, 0.28)
+			TS:Create(toast, TweenInfo.new(0.28, Enum.EasingStyle.Quart, Enum.EasingDirection.In), {
+				Position = UDim2.fromOffset(60, 0),
+				BackgroundTransparency = 1
+			}):Play()
 			task.delay(0.31, function()
 				if toast.Parent then
 					UnregisterThemeTree(toast)
@@ -2002,6 +2125,7 @@ function GuiLib:CreateWindow(Args)
 				end
 			end)
 		end
+
 		Track(close.MouseButton1Click:Connect(dismiss))
 		Track(toast.InputBegan:Connect(function(input)
 			if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
@@ -2012,10 +2136,7 @@ function GuiLib:CreateWindow(Args)
 				notificationStartPosition = NotificationHolder.Position
 			end
 		end))
-		for _, entry in ipairs(fadeProperties) do
-			if entry.Object and entry.Object.Parent then entry.Object[entry.Property] = 1 end
-		end
-		fadeToast(false, 0.28)
+
 		task.delay(math.max(1, duration), dismiss)
 		return toast
 	end
@@ -2099,11 +2220,11 @@ function GuiLib:CreateWindow(Args)
 			connection:Disconnect()
 		end
 		table.clear(Connections)
-		for _, conn in ipairs(activeDragConnections) do conn:Disconnect() end
-		table.clear(activeDragConnections)
+		if beginActiveDragConn then beginActiveDragConn:Disconnect() end
 		if WatermarkObject then WatermarkObject:Destroy(); WatermarkObject = nil end
 		MainGui:Destroy()
 		table.clear(ThemeObjects)
+		table.clear(ThemeObjectMap)
 	end
 
 	return WindowObject
