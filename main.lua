@@ -148,6 +148,37 @@ GuiLib.Themes = {
 	}
 }
 
+local THEME_KEYS = {
+	"Background", "Sidebar", "Section", "Element",
+	"Hover", "Accent", "Text", "SubText", "Border"
+}
+
+function GuiLib:RegisterTheme(name, palette)
+	assert(type(name) == "string" and name ~= "", "Theme name must be a non-empty string")
+	assert(type(palette) == "table", "Theme palette must be a table")
+	local resolved = {}
+	for _, key in ipairs(THEME_KEYS) do
+		local value = palette[key]
+		assert(typeof(value) == "Color3", string.format(
+			"Theme '%s' is missing Color3 field '%s'", name, key))
+		resolved[key] = value
+	end
+	resolved.Shadow = palette.Shadow
+	resolved.RoundedRadius = palette.RoundedRadius
+	GuiLib.Themes[name] = resolved
+	return resolved
+end
+
+function GuiLib:PatchTheme(overrides)
+	assert(type(overrides) == "table", "PatchTheme expects a table")
+	for key, value in pairs(overrides) do
+		if typeof(value) == "Color3" then
+			Theme[key] = value
+		end
+	end
+	GuiLib:SetTheme(Theme)
+end
+
 local Theme = GuiLib.Themes.Dark
 local ThemeObjects = {}
 local ThemeObjectMap = {}
