@@ -2131,7 +2131,7 @@ function GuiLib:CreateWindow(Args)
 			UnregisterThemeTree(row)
 			row:Destroy()
 		end
-		ActiveFeaturesHolder.Visible = next(ActiveFeatureRows) ~= nil
+		ActiveFeaturesHolder.Visible = ActiveFeaturesEnabled and next(ActiveFeatureRows) ~= nil
 	end
 
 	local NotificationHolder = Create("Frame", {
