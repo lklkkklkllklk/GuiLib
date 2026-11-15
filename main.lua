@@ -806,6 +806,7 @@ function GuiLib:CreateWindow(Args)
 	end
 
 	local RefreshActiveFeatures
+	local ActiveFeaturesEnabled = true
 	local function SetOptionState(name, value)
 		if not name then return end
 		OptionStates[name] = not not value
@@ -2134,6 +2135,16 @@ function GuiLib:CreateWindow(Args)
 		ActiveFeaturesHolder.Visible = ActiveFeaturesEnabled and next(ActiveFeatureRows) ~= nil
 	end
 
+	function WindowObject:SetActiveFeaturesEnabled(enabled)
+		ActiveFeaturesEnabled = not not enabled
+		ActiveFeaturesHolder.Visible = ActiveFeaturesEnabled and next(ActiveFeatureRows) ~= nil
+	end
+
+	function WindowObject:GetActiveFeaturesEnabled()
+		return ActiveFeaturesEnabled
+	end
+
+	
 	local NotificationHolder = Create("Frame", {
 		Name = "KynNotifications", Size = UDim2.fromOffset(320, 0),
 		AutomaticSize = Enum.AutomaticSize.Y, Position = UDim2.new(1, -12, 1, -12),
