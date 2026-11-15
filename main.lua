@@ -2095,7 +2095,7 @@ function GuiLib:CreateWindow(Args)
 		end
 	end)
 
-	RefreshActiveFeatures = function(name, enabled)
+		RefreshActiveFeatures = function(name, enabled)
 		if not name or tostring(name) == "" then return end
 		local row = ActiveFeatureRows[name]
 		if enabled and not row then
@@ -2132,7 +2132,11 @@ function GuiLib:CreateWindow(Args)
 			UnregisterThemeTree(row)
 			row:Destroy()
 		end
-		ActiveFeaturesHolder.Visible = ActiveFeaturesEnabled and next(ActiveFeatureRows) ~= nil
+		if ActiveFeaturesEnabled then
+			ActiveFeaturesHolder.Visible = next(ActiveFeatureRows) ~= nil
+		else
+			ActiveFeaturesHolder.Visible = false
+		end
 	end
 
 	function WindowObject:SetActiveFeaturesEnabled(enabled)
