@@ -574,7 +574,7 @@ function GuiLib:CreateWindow(Args)
 			Tween(button, {BackgroundColor3 = Theme.Hover, BackgroundTransparency = 0, TextColor3 = Theme.Accent}, 0.12)
 		end))
 		Track(button.MouseLeave:Connect(function()
-			Tween(button, {BackgroundColor3 = Theme.Element, BackgroundTransparency = 0.15, TextColor3 = Theme.Text}, 0.14)
+			Tween(button, {BackgroundColor3 = Theme.Element, BackgroundTransparency = 1, TextColor3 = Theme.Text}, 0.14)
 		end))
 		RegisterTheme(button, {
 			BackgroundColor3 = "Element",
@@ -958,14 +958,13 @@ function GuiLib:CreateWindow(Args)
 		AnimateButton(TabButton)
 		AddPadding(TabButton, 10, 8, 0, 0)
 
-		-- Left accent bar shown only when selected
 		local TabIndicator = Create("Frame", {
-			Size = UDim2.new(0, 2, 1, -8),
-			Position = UDim2.fromOffset(0, 4),
-			BackgroundColor3 = Theme.Accent,
-			BorderSizePixel = 0,
-			ZIndex = TabButton.ZIndex + 1
-		}, TabButton)
+    Size = UDim2.new(0, 2, 1, -8),
+    Position = UDim2.fromOffset(-6, 4),
+    BackgroundColor3 = Theme.Accent,
+    BorderSizePixel = 0,
+    ZIndex = TabButton.ZIndex + 1
+}, TabButton)
 		Corner(TabIndicator, 2)
 		RegisterTheme(TabIndicator, {BackgroundColor3 = "Accent"})
 		TabIndicator.BackgroundTransparency = 1
@@ -1179,7 +1178,7 @@ function GuiLib:CreateWindow(Args)
 					Tween(button, {BackgroundColor3 = Theme.Hover, BackgroundTransparency = 0})
 				end))
 				Track(button.MouseLeave:Connect(function()
-					Tween(button, {BackgroundColor3 = Theme.Element, BackgroundTransparency = 0.15})
+					Tween(button, {BackgroundColor3 = Theme.Element, BackgroundTransparency = 1})
 				end))
 				return button
 			end
@@ -1400,7 +1399,7 @@ function GuiLib:CreateWindow(Args)
 				Selection.TextTruncate = Enum.TextTruncate.AtEnd
 				RegisterTheme(Selection, {TextColor3 = "SubText"})
 
-				local Arrow = Label(Button, "⌄", UDim2.fromOffset(20, 27), UDim2.new(1, -22, 0, 1), 14, Theme.SubText)
+				local Arrow = Label(Button, "^", UDim2.fromOffset(20, 27), UDim2.new(1, -22, 0, 1), 14, Theme.SubText)
 				Arrow.TextXAlignment = Enum.TextXAlignment.Center
 				RegisterTheme(Arrow, {TextColor3 = "SubText"})
 
@@ -1783,7 +1782,7 @@ function GuiLib:CreateWindow(Args)
 			Corner(result, 5); AddPadding(result, 9, 6, 0, 0)
 			RegisterTheme(result, {BackgroundColor3 = "Element", TextColor3 = "Text"})
 			Track(result.MouseEnter:Connect(function() Tween(result, {BackgroundColor3 = Theme.Hover, BackgroundTransparency = 0}, 0.1) end))
-			Track(result.MouseLeave:Connect(function() Tween(result, {BackgroundColor3 = Theme.Element, BackgroundTransparency = 0.25}, 0.1) end))
+			Track(result.MouseLeave:Connect(function() Tween(result, {BackgroundColor3 = Theme.Element, BackgroundTransparency = 1}, 0.1) end))
 			Track(result.MouseButton1Click:Connect(function()
 				SearchPanel.Visible = false
 				SearchInput:ReleaseFocus()
@@ -1825,7 +1824,7 @@ function GuiLib:CreateWindow(Args)
 		Corner(b, 6); Stroke(b, 0.35); AddPadding(b, 9, 9, 0, 0)
 		RegisterTheme(b, {BackgroundColor3 = "Element", TextColor3 = "Text"})
 		Track(b.MouseEnter:Connect(function() Tween(b, {BackgroundColor3 = Theme.Hover, BackgroundTransparency = 0}, 0.1) end))
-		Track(b.MouseLeave:Connect(function() Tween(b, {BackgroundColor3 = Theme.Element, BackgroundTransparency = 0.15}, 0.1) end))
+		Track(b.MouseLeave:Connect(function() Tween(b, {BackgroundColor3 = Theme.Element, BackgroundTransparency = 1}, 0.1) end))
 		return b
 	end
 
