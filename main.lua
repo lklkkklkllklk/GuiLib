@@ -201,6 +201,16 @@ RegisterTheme = function(object, properties, callback)
 	})
 end
 
+local function UnregisterThemeTree(root)
+	if not root then return end
+	for index = #ThemeObjects, 1, -1 do
+		local object = ThemeObjects[index].Object
+		if not object or object == root or object:IsDescendantOf(root) then
+			table.remove(ThemeObjects, index)
+		end
+	end
+end
+
 local AnimationSettings = {
 	Enabled = true,
 	Speed = 1
@@ -459,6 +469,12 @@ function GuiLib:CreateWindow(Args)
 		Corner(button, 7)
 		Stroke(button, 0)
 		AnimateButton(button)
+		Track(button.MouseEnter:Connect(function()
+			Tween(button, {BackgroundColor3 = Theme.Hover, TextColor3 = Theme.Accent}, 0.12)
+		end))
+		Track(button.MouseLeave:Connect(function()
+			Tween(button, {BackgroundColor3 = Theme.Element, TextColor3 = Theme.Text}, 0.14)
+		end))
 
 		RegisterTheme(button, {
 			BackgroundColor3 = "Element",
@@ -680,11 +696,16 @@ end
 		refresh()
 	end
 
+	local RefreshActiveFeatures
+	local RefreshActiveFeatures
 	local function SetOptionState(name, value)
 		if not name then return end
 		OptionStates[name] = not not value
 		for _, binding in ipairs(VisibilityBindings) do
 			if binding.Key == name then binding.Refresh() end
+		end
+		if RefreshActiveFeatures then
+			RefreshActiveFeatures(name, OptionStates[name])
 		end
 	end
 
@@ -782,6 +803,7 @@ end
 			alive = false
 			connection:Disconnect()
 			for _, dragConnection in ipairs(dragConnections) do dragConnection:Disconnect() end
+			UnregisterThemeTree(root)
 			root:Destroy()
 		end
 		return WatermarkObject
@@ -1077,7 +1099,7 @@ end
 				}, Button)
 
 				Corner(Switch, 20)
-				Stroke(Switch, 0)
+				local SwitchStroke = Stroke(Switch, 0.42)
 
 				RegisterTheme(Switch, {
 					BackgroundColor3 = "Border"
@@ -1091,6 +1113,7 @@ end
 				}, Switch)
 
 				Corner(Knob, 20)
+				local KnobScale = Create("UIScale", {Scale = 1}, Knob)
 
 				RegisterTheme(Knob, {
 					BackgroundColor3 = "Text"
@@ -1101,19 +1124,41 @@ end
 					SetOptionState(Args.Name, Value)
 
 					Tween(Switch, {
-						BackgroundColor3 = Value and Theme.Accent or Theme.Border
-					}, 0.12)
+						BackgroundColor3 = Value and Theme.Accent or Theme.Border,
+						BackgroundTransparency = Value and 0.04 or 0.28
+					}, 0.16)
+
+					Tween(SwitchStroke, {
+						Color = Value and Theme.Accent or Theme.Border,
+						Transparency = Value and 0.16 or 0.55
+					}, 0.16)
 
 					Tween(Knob, {
 						Position = Value
 							and UDim2.new(1, -13, 0, 3)
-							or UDim2.fromOffset(3, 3)
-					}, 0.12)
+							or UDim2.fromOffset(3, 3),
+						BackgroundTransparency = Value and 0 or 0.08
+					}, 0.16)
+					Tween(KnobScale, {Scale = Value and 1.08 or 1}, 0.16)
 
 					if callback then
 						Protect(Args.Callback, Value)
 					end
 				end
+
+				Track(Button.MouseEnter:Connect(function()
+					Tween(Switch, {
+						BackgroundTransparency = Value and 0 or 0.16
+					}, 0.12)
+					Tween(KnobScale, {Scale = 1.12}, 0.12)
+				end))
+
+				Track(Button.MouseLeave:Connect(function()
+					Tween(Switch, {
+						BackgroundTransparency = Value and 0.04 or 0.28
+					}, 0.14)
+					Tween(KnobScale, {Scale = Value and 1.08 or 1}, 0.14)
+				end))
 
 				Track(Button.MouseButton1Click:Connect(function()
 					Update(not Value, true)
@@ -2168,13 +2213,94 @@ end
 		end
 	end))
 
+	-- Active toggles are shown in the top-right, opposite the default top-left watermark.
+	local ActiveFeatureRows = {}
+	local activeFeatureOrder = 0
+	local ActiveFeaturesHolder = Create("Frame", {
+		Name = "NovexActiveFeatures",
+		Size = UDim2.fromOffset(220, 0),
+		AutomaticSize = Enum.AutomaticSize.Y,
+		Position = UDim2.new(1, -12, 0, 12),
+		AnchorPoint = Vector2.new(1, 0),
+		BackgroundColor3 = Theme.Section,
+		BackgroundTransparency = 0.06,
+		BorderSizePixel = 0,
+		Visible = false,
+		ZIndex = 180
+	}, MainGui)
+	Corner(ActiveFeaturesHolder, 10)
+	Stroke(ActiveFeaturesHolder, 0.12)
+	AddGradient(ActiveFeaturesHolder, "Section", "Sidebar", 0)
+	RegisterTheme(ActiveFeaturesHolder, {BackgroundColor3 = "Section"})
+	local activeHeader = Label(ActiveFeaturesHolder, "ACTIVE FEATURES", UDim2.new(1, -18, 0, 22), UDim2.fromOffset(9, 4), 9, Theme.SubText)
+	activeHeader.Font = Enum.Font.GothamBold
+	activeHeader.ZIndex = 181
+	RegisterTheme(activeHeader, {TextColor3 = "SubText"})
+	local ActiveFeatureList = Create("Frame", {
+		Name = "FeatureList",
+		Size = UDim2.new(1, -12, 0, 0),
+		Position = UDim2.fromOffset(6, 28),
+		AutomaticSize = Enum.AutomaticSize.Y,
+		BackgroundTransparency = 1,
+		ZIndex = 181
+	}, ActiveFeaturesHolder)
+	Create("UIListLayout", {
+		Padding = UDim.new(0, 4),
+		SortOrder = Enum.SortOrder.LayoutOrder
+	}, ActiveFeatureList)
+	AddPadding(ActiveFeaturesHolder, 0, 0, 0, 7)
+
+	RefreshActiveFeatures = function(name, enabled)
+		if not name or tostring(name) == "" then return end
+		local row = ActiveFeatureRows[name]
+		if enabled and not row then
+			activeFeatureOrder += 1
+			row = Create("Frame", {
+				Name = "ActiveFeature",
+				Size = UDim2.new(1, 0, 0, 21),
+				BackgroundColor3 = Theme.Element,
+				BackgroundTransparency = 0.28,
+				BorderSizePixel = 0,
+				LayoutOrder = activeFeatureOrder,
+				ZIndex = 182
+			}, ActiveFeatureList)
+			Corner(row, 6)
+			RegisterTheme(row, {BackgroundColor3 = "Element"})
+			local dot = Create("Frame", {
+				Size = UDim2.fromOffset(6, 6),
+				Position = UDim2.fromOffset(8, 7.5),
+				BackgroundColor3 = Theme.Accent,
+				BorderSizePixel = 0,
+				ZIndex = 183
+			}, row)
+			Corner(dot, 6)
+			RegisterTheme(dot, {BackgroundColor3 = "Accent"})
+			local label = Label(row, tostring(name), UDim2.new(1, -25, 1, 0), UDim2.fromOffset(20, 0), 9, Theme.Text)
+			label.ZIndex = 183
+			RegisterTheme(label, {TextColor3 = "Text"})
+			ActiveFeatureRows[name] = row
+			row.BackgroundTransparency = 1
+			Tween(row, {BackgroundTransparency = 0.28}, 0.18)
+		elseif not enabled and row then
+			ActiveFeatureRows[name] = nil
+			Tween(row, {BackgroundTransparency = 1}, 0.14)
+			task.delay(0.16, function()
+				if row and row.Parent then
+					UnregisterThemeTree(row)
+					row:Destroy()
+				end
+			end)
+		end
+		ActiveFeaturesHolder.Visible = next(ActiveFeatureRows) ~= nil
+	end
+
 	local NotificationHolder = Create("Frame", {
 		Name = "NovexNotifications", Size = UDim2.fromOffset(320, 0),
-		AutomaticSize = Enum.AutomaticSize.Y, Position = UDim2.new(1, -12, 0, 12),
-		AnchorPoint = Vector2.new(1, 0), BackgroundTransparency = 1,
+		AutomaticSize = Enum.AutomaticSize.Y, Position = UDim2.new(1, -12, 1, -12),
+		AnchorPoint = Vector2.new(1, 1), BackgroundTransparency = 1,
 		BorderSizePixel = 0, ZIndex = 300, Active = true
 	}, MainGui)
-	Create("UIListLayout", {Padding = UDim.new(0, 7), SortOrder = Enum.SortOrder.LayoutOrder, VerticalAlignment = Enum.VerticalAlignment.Top, HorizontalAlignment = Enum.HorizontalAlignment.Center}, NotificationHolder)
+	Create("UIListLayout", {Padding = UDim.new(0, 7), SortOrder = Enum.SortOrder.LayoutOrder, VerticalAlignment = Enum.VerticalAlignment.Bottom, HorizontalAlignment = Enum.HorizontalAlignment.Center}, NotificationHolder)
 	local notificationCount, notificationDragging, notificationDragStart, notificationStartPosition = 0, false, nil, nil
 	Track(UIS.InputChanged:Connect(function(input)
 		if notificationDragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
@@ -2237,7 +2363,12 @@ end
 			if dismissed or not toast.Parent then return end
 			dismissed = true
 			fadeToast(true, 0.28)
-			task.delay(0.31, function() if toast.Parent then toast:Destroy() end end)
+			task.delay(0.31, function()
+				if toast.Parent then
+					UnregisterThemeTree(toast)
+					toast:Destroy()
+				end
+			end)
 		end
 		Track(close.MouseButton1Click:Connect(dismiss))
 		Track(toast.InputBegan:Connect(function(input)
